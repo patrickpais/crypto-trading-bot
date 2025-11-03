@@ -8,12 +8,16 @@ import Dashboard from "./pages/Dashboard";
 import Trades from "./pages/Trades";
 import Settings from "./pages/Settings";
 import Logs from "./pages/Logs";
+import Backtesting from "./pages/Backtesting";
+import Retrain from "./pages/Retrain";
 
 function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Dashboard} />
       <Route path={"/trades"} component={Trades} />
+      <Route path={"/backtesting"} component={Backtesting} />
+      <Route path={"/retrain"} component={Retrain} />
       <Route path={"/settings"} component={Settings} />
       <Route path={"/logs"} component={Logs} />
       <Route path={"/404"} component={NotFound} />

@@ -3,6 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
+import { spawn } from "child_process";
 import * as db from "./db";
 
 export const appRouter = router({
@@ -116,6 +117,119 @@ export const appRouter = router({
         const limit = input?.limit || 50;
         return await db.getBotLogs(ctx.user.id, limit);
       }),
+  }),
+
+  // Backtesting
+  backtest: router({
+    run: protectedProcedure
+      .input(z.object({
+        symbol: z.string(),
+        interval: z.string(),
+        confidenceThreshold: z.number().min(0).max(100),
+      }))
+      .mutation(async ({ input }) => {
+        const { spawn } = require('child_process');
+        const path = require('path');
+        
+        return new Promise((resolve, reject) => {
+          const scriptPath = path.join(__dirname, '..', 'scripts', 'backtest.py');
+          const python = spawn('python3', [
+            scriptPath,
+            input.symbol,
+            input.interval,
+            input.confidenceThreshold.toString()
+          ]);
+          
+          let stdout = '';
+          let stderr = '';
+          
+          python.stdout.on('data', (data: Buffer) => {
+            stdout += data.toString();
+          });
+          
+          python.stderr.on('data', (data: Buffer) => {
+            stderr += data.toString();
+          });
+          
+          python.on('close', (code: number) => {
+            if (code !== 0) {
+              reject(new Error(`Backtest failed: ${stderr}`));
+              return;
+            }
+            
+            try {
+              const fs = require('fs');
+              const resultsPath = path.join(__dirname, '..', 'backtest_results.json');
+              const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+              resolve(results);
+            } catch (error) {
+              reject(error);
+            }
+          });
+        });
+      }),
+  }),
+
+  // Retreinamento
+  retrain: router({
+    start: protectedProcedure
+      .input(z.object({
+        updateData: z.boolean().default(false),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { spawn } = require('child_process');
+        const path = require('path');
+        
+        await db.createBotLog(
+          ctx.user.id,
+          'info',
+          'Retreinamento iniciado',
+          { updateData: input.updateData }
+        );
+        
+        return new Promise((resolve, reject) => {
+          const scriptPath = path.join(__dirname, '..', 'scripts', 'retrain.py');
+          const args = ['python3', scriptPath];
+          if (input.updateData) {
+            args.push('--update-data');
+          }
+          
+          const python = spawn(args[0], args.slice(1));
+          
+          python.on('close', async (code: number) => {
+            if (code !== 0) {
+              await db.createBotLog(
+                ctx.user.id,
+                'error',
+                'Retreinamento falhou'
+              );
+              reject(new Error('Retreinamento falhou'));
+              return;
+            }
+            
+            await db.createBotLog(
+              ctx.user.id,
+              'info',
+              'Retreinamento concluído com sucesso'
+            );
+            
+            resolve({ success: true, message: 'Retreinamento concluído' });
+          });
+        });
+      }),
+
+    logs: protectedProcedure.query(async () => {
+      const fs = require('fs');
+      const path = require('path');
+      
+      try {
+        const logPath = path.join(__dirname, '..', 'retrain_log.json');
+        const logs = JSON.parse(fs.readFileSync(logPath, 'utf8'));
+        return logs.slice(-10); // Últimos 10 logs
+      } catch (error) {
+        return [];
+      }
+    }),
   }),
 });
 
