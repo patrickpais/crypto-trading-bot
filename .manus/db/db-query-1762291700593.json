@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE users SET passwordHash = '1234567890abcdef' WHERE id = 1 LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user i4eWuXmqdJD31yc.root --database Cp5JEc3tFKKzfsKUJ75GgH --execute UPDATE users SET passwordHash = '1234567890abcdef' WHERE id = 1 LIMIT 1;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 61
+}

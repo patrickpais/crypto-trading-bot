@@ -28,8 +28,13 @@ import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Page 1", path: "/" },
-  { icon: Users, label: "Page 2", path: "/some-path" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: LayoutDashboard, label: "Trades", path: "/trades" },
+  { icon: LayoutDashboard, label: "Backtesting", path: "/backtesting" },
+  { icon: LayoutDashboard, label: "Retreinamento", path: "/retrain" },
+  { icon: Users, label: "Perfil", path: "/profile" },
+  { icon: LayoutDashboard, label: "Configurações", path: "/settings" },
+  { icon: LayoutDashboard, label: "Logs", path: "/logs" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -84,7 +89,7 @@ export default function DashboardLayout({
             size="lg"
             className="w-full shadow-lg hover:shadow-xl transition-all"
           >
-            Sign in
+            Entrar
           </Button>
         </div>
       </div>

@@ -2,7 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -10,23 +10,37 @@ import { useState } from "react";
 import { RefreshCw, CheckCircle, XCircle } from "lucide-react";
 
 export default function Retrain() {
-  const [updateData, setUpdateData] = useState(true);
+  const [symbol, setSymbol] = useState("BTCUSDT");
+  const [interval, setInterval] = useState("1h");
+  const [period, setPeriod] = useState(365);
   const utils = trpc.useUtils();
 
   const { data: retrainLogs } = trpc.retrain.logs.useQuery();
 
   const startRetrain = trpc.retrain.start.useMutation({
-    onSuccess: () => {
-      toast.success("Retreinamento concluído com sucesso!");
+    onSuccess: (data) => {
+      toast.success(data.message || "Retreinamento iniciado com sucesso!");
       utils.retrain.logs.invalidate();
+      utils.retrain.status.invalidate();
     },
-    onError: (error) => {
-      toast.error(`Erro no retreinamento: ${error.message}`);
+    onError: (error: any) => {
+      const errorMessage = error.data?.zodError 
+        ? JSON.stringify(error.data.zodError, null, 2)
+        : error.message;
+      toast.error(`Erro no retreinamento: ${errorMessage}`);
     },
   });
 
   const handleRetrain = () => {
-    startRetrain.mutate({ updateData });
+    if (!symbol || !interval) {
+      toast.error("Por favor, selecione o símbolo e intervalo");
+      return;
+    }
+    startRetrain.mutate({ 
+      symbol, 
+      interval, 
+      period 
+    });
   };
 
   return (
@@ -47,18 +61,52 @@ export default function Retrain() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="update-data">Atualizar Dados</Label>
-                <p className="text-sm text-muted-foreground">
-                  Buscar dados das últimas 24h antes de retreinar
-                </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="symbol">Símbolo</Label>
+                <Select value={symbol} onValueChange={setSymbol}>
+                  <SelectTrigger id="symbol">
+                    <SelectValue placeholder="Selecione o símbolo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BTCUSDT">BTC/USDT</SelectItem>
+                    <SelectItem value="ETHUSDT">ETH/USDT</SelectItem>
+                    <SelectItem value="SOLUSDT">SOL/USDT</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <Switch
-                id="update-data"
-                checked={updateData}
-                onCheckedChange={setUpdateData}
-              />
+
+              <div className="space-y-2">
+                <Label htmlFor="interval">Intervalo</Label>
+                <Select value={interval} onValueChange={setInterval}>
+                  <SelectTrigger id="interval">
+                    <SelectValue placeholder="Selecione o intervalo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5m">5 minutos</SelectItem>
+                    <SelectItem value="15m">15 minutos</SelectItem>
+                    <SelectItem value="30m">30 minutos</SelectItem>
+                    <SelectItem value="1h">1 hora</SelectItem>
+                    <SelectItem value="4h">4 horas</SelectItem>
+                    <SelectItem value="1d">1 dia</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="period">Período (dias)</Label>
+                <Select value={period.toString()} onValueChange={(v) => setPeriod(parseInt(v))}>
+                  <SelectTrigger id="period">
+                    <SelectValue placeholder="Selecione o período" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30">30 dias</SelectItem>
+                    <SelectItem value="90">90 dias</SelectItem>
+                    <SelectItem value="180">180 dias</SelectItem>
+                    <SelectItem value="365">1 ano</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <Button
@@ -82,8 +130,8 @@ export default function Retrain() {
             <div className="text-sm text-muted-foreground space-y-2">
               <p><strong>O que acontece durante o retreinamento:</strong></p>
               <ul className="list-disc list-inside space-y-1">
-                {updateData && <li>Busca dados das últimas 24h da Bybit</li>}
-                <li>Recalcula indicadores técnicos</li>
+                <li>Coleta dados históricos de {symbol} em intervalo de {interval}</li>
+                <li>Recalcula indicadores técnicos (RSI, MACD, Bollinger Bands, EMA)</li>
                 <li>Prepara novos dados de treinamento</li>
                 <li>Treina modelos com dados atualizados</li>
                 <li>Salva novos modelos (versões anteriores são preservadas)</li>
@@ -114,25 +162,13 @@ export default function Retrain() {
                         <Badge variant={log.success ? "default" : "destructive"}>
                           {log.success ? "Sucesso" : "Falhou"}
                         </Badge>
-                        {log.update_data && (
-                          <Badge variant="outline">Dados Atualizados</Badge>
-                        )}
                       </div>
                       <div className="text-sm text-muted-foreground mt-2">
                         {new Date(log.timestamp).toLocaleString('pt-BR')}
                       </div>
-                      {log.steps && (
-                        <div className="mt-2 space-y-1">
-                          {log.steps.map((step: any, stepIdx: number) => (
-                            <div key={stepIdx} className="text-sm flex items-center gap-2">
-                              {step.success ? (
-                                <CheckCircle className="h-3 w-3 text-green-500" />
-                              ) : (
-                                <XCircle className="h-3 w-3 text-red-500" />
-                              )}
-                              <span className="text-muted-foreground">{step.step}</span>
-                            </div>
-                          ))}
+                      {log.message && (
+                        <div className="text-sm mt-2">
+                          {log.message}
                         </div>
                       )}
                     </div>

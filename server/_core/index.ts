@@ -4,9 +4,12 @@ import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
+import { registerSimpleAuthRoutes } from "./simpleAuth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { scheduleBacktest7Days } from "../jobs/liveBacktest7Days";
+import { scheduleMarketDataCollection, scheduleRealtimeDataUpdate } from "../services/bybitIntegration";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -35,6 +38,8 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  // Simple auth routes (fallback)
+  registerSimpleAuthRoutes(app);
   // tRPC API
   app.use(
     "/api/trpc",
@@ -59,6 +64,11 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // Iniciar backtesting ao vivo de 7 dias
+    scheduleBacktest7Days();
+    // Iniciar coleta de dados do Bybit
+    scheduleMarketDataCollection();
+    scheduleRealtimeDataUpdate();
   });
 }
 

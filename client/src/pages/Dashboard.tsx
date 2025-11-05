@@ -16,7 +16,7 @@ export default function Dashboard() {
   const { data: marketData } = trpc.market.latest.useQuery(undefined, {
     refetchInterval: 30000, // Atualizar a cada 30 segundos
   });
-  const { data: openTrades } = trpc.trades.openTrades.useQuery(undefined, {
+  const { data: openTrades } = trpc.trades.open.useQuery(undefined, {
     refetchInterval: 10000, // Atualizar a cada 10 segundos
   });
 
@@ -155,34 +155,16 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-4">
               {marketData && marketData.length > 0 ? (
-                marketData.map((analysis, idx) => (
+                marketData.map((analysis: any, idx: number) => (
                   <div key={idx} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-4">
                       <div>
-                        <div className="font-semibold">{analysis.symbol}</div>
-                        <div className="text-sm text-muted-foreground">{analysis.interval}</div>
-                      </div>
-                      <div className="text-2xl font-mono">
-                        ${parseFloat(analysis.currentPrice).toFixed(2)}
+                        <div className="font-semibold">Mercado {idx + 1}</div>
+                        <div className="text-sm text-muted-foreground">Aguardando dados...</div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <Badge
-                        variant={
-                          analysis.prediction === 'buy' ? 'default' :
-                          analysis.prediction === 'sell' ? 'destructive' :
-                          'secondary'
-                        }
-                      >
-                        {analysis.prediction.toUpperCase()}
-                      </Badge>
-                      <div className="text-right">
-                        <div className="text-sm font-medium">{analysis.confidence}%</div>
-                        <div className="text-xs text-muted-foreground">Confiança</div>
-                      </div>
-                      {analysis.inTrade && (
-                        <Badge variant="outline">Em Trade</Badge>
-                      )}
+                    <div className="text-right">
+                      <div className="text-sm text-muted-foreground">Dados em carregamento</div>
                     </div>
                   </div>
                 ))
@@ -206,7 +188,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {openTrades.map((trade) => (
+                {openTrades.map((trade: any) => (
                   <div key={trade.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-4">
                       <div>

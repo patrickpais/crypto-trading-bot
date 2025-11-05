@@ -105,3 +105,17 @@ temp/
 *.db
 *.sqlite
 *.sqlite3
+
+# ML Models (Large Files)
+models/
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.pth
+
+# Data files (Large Files)
+data/
+*.csv
+*.npy
+*.npz

@@ -42,11 +42,11 @@ export default function Logs() {
                     </Badge>
                     <div className="flex-1">
                       <div className="font-medium">{log.message}</div>
-                      {log.details && (
+                      {log.metadata ? (
                         <div className="text-sm text-muted-foreground mt-1 font-mono">
-                          {typeof log.details === 'string' ? log.details : JSON.stringify(JSON.parse(log.details), null, 2)}
+                          {typeof log.metadata === 'string' ? log.metadata : JSON.stringify(log.metadata as any, null, 2)}
                         </div>
-                      )}
+                      ) : null}
                       <div className="text-xs text-muted-foreground mt-2">
                         {new Date(log.createdAt).toLocaleString('pt-BR')}
                       </div>

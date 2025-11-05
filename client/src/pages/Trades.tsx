@@ -2,10 +2,18 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
+import PerformanceChart from "@/components/PerformanceChart";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function Trades() {
   const { data: trades, isLoading } = trpc.trades.list.useQuery({ limit: 100 });
+
+  // Preparar dados para o gráfico de performance
+  const closedTrades = trades?.filter(t => t.status === 'closed' && t.exitPrice && t.profitPercent && t.quantity).map(t => ({
+    exit_time: (t.exitTime || t.entryTime).toString(),
+    pnl: (parseFloat(t.profitPercent!) / 100) * parseFloat(t.entryPrice) * parseFloat(t.quantity!),
+    pnl_pct: parseFloat(t.profitPercent!)
+  })) || [];
 
   return (
     <DashboardLayout>
@@ -16,6 +24,10 @@ export default function Trades() {
             Visualize todos os trades executados pelo bot
           </p>
         </div>
+
+        {closedTrades.length > 0 && (
+          <PerformanceChart trades={closedTrades} initialBalance={10000} />
+        )}
 
         <Card>
           <CardHeader>
@@ -60,9 +72,9 @@ export default function Trades() {
                         {trade.exitPrice ? `$${parseFloat(trade.exitPrice).toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell>
-                        {trade.profitPercentage ? (
-                          <span className={parseFloat(trade.profitPercentage) >= 0 ? 'text-green-500' : 'text-red-500'}>
-                            {parseFloat(trade.profitPercentage).toFixed(2)}%
+                        {trade.profitPercent ? (
+                          <span className={parseFloat(trade.profitPercent) >= 0 ? 'text-green-500' : 'text-red-500'}>
+                            {parseFloat(trade.profitPercent).toFixed(2)}%
                           </span>
                         ) : '-'}
                       </TableCell>
@@ -75,7 +87,7 @@ export default function Trades() {
                           {trade.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{trade.confidence}%</TableCell>
+                      <TableCell>-</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

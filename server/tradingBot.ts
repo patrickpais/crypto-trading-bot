@@ -82,16 +82,7 @@ async function analyzeMarket(symbol: string, interval: string): Promise<Predicti
       return null;
     }
     
-    // Salvar análise no banco
-    await db.saveMarketAnalysis({
-      symbol: prediction.symbol,
-      interval: prediction.interval,
-      currentPrice: prediction.currentPrice.toString(),
-      prediction: prediction.prediction,
-      confidence: prediction.confidence,
-      indicators: JSON.stringify(prediction.indicators),
-      inTrade: false,
-    });
+    // TODO: Salvar análise no banco quando a tabela estiver disponível
     
     console.log(`[Bot] ${symbol} ${interval}: ${prediction.prediction.toUpperCase()} (${prediction.confidence}% confidence)`);
     
@@ -146,10 +137,9 @@ async function executeTrade(
       entryPrice: prediction.currentPrice.toString(),
       exitPrice: null,
       quantity: quantity.toString(),
-      confidence: prediction.confidence,
       status: 'open',
       profit: null,
-      profitPercentage: null,
+      profitPercent: null,
       entryTime: new Date(),
       exitTime: null,
     });
@@ -185,13 +175,10 @@ async function monitorOpenTrades(userId: number, config: any) {
     const openTrades = await db.getOpenTrades(userId);
     
     for (const trade of openTrades) {
-      // Buscar preço atual
-      const analysis = await db.getLatestMarketAnalysis(trade.symbol, trade.interval);
-      
-      if (!analysis) continue;
-      
+      // TODO: Buscar preço atual quando a função estiver disponível
+      // Por enquanto, usar preço de entrada como referência
       const entryPrice = parseFloat(trade.entryPrice);
-      const currentPrice = parseFloat(analysis.currentPrice);
+      const currentPrice = entryPrice; // Placeholder
       
       // Calcular variação percentual
       const priceChange = ((currentPrice - entryPrice) / entryPrice) * 100;

@@ -18,7 +18,7 @@ export default function Backtesting() {
   const runBacktest = trpc.backtest.run.useMutation({
     onSuccess: (data) => {
       setResults(data);
-      toast.success("Backtesting concluído!");
+      toast.success("Backtesting iniciado! Aguarde os resultados...");
     },
     onError: (error) => {
       toast.error(`Erro no backtesting: ${error.message}`);
@@ -60,6 +60,7 @@ export default function Backtesting() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="BTCUSDT">BTCUSDT</SelectItem>
                     <SelectItem value="ETHUSDT">ETHUSDT</SelectItem>
                     <SelectItem value="SOLUSDT">SOLUSDT</SelectItem>
                   </SelectContent>
@@ -73,6 +74,9 @@ export default function Backtesting() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="5m">5 Minutos</SelectItem>
+                    <SelectItem value="15m">15 Minutos</SelectItem>
+                    <SelectItem value="30m">30 Minutos</SelectItem>
                     <SelectItem value="1h">1 Hora</SelectItem>
                   </SelectContent>
                 </Select>
@@ -85,7 +89,7 @@ export default function Backtesting() {
                   min="0"
                   max="100"
                   value={confidenceThreshold}
-                  onChange={(e) => setConfidenceThreshold(parseInt(e.target.value))}
+                  onChange={(e) => setConfidenceThreshold(parseInt(e.target.value) || 0)}
                 />
               </div>
             </div>
@@ -105,95 +109,106 @@ export default function Backtesting() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">ROI</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-2xl font-bold ${results.roi >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {results.roi.toFixed(2)}%
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Retorno sobre investimento
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Taxa de Acerto</CardTitle>
+                  <CardTitle className="text-sm font-medium">Status</CardTitle>
                   <Activity className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{results.win_rate.toFixed(2)}%</div>
+                  <div className="text-2xl font-bold text-green-500">
+                    {results.success ? "✓ Sucesso" : "✗ Erro"}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    {results.winning_trades}/{results.total_trades} trades
+                    {results.message || "Backtesting em andamento"}
                   </p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Lucro Total</CardTitle>
+                  <CardTitle className="text-sm font-medium">Símbolo</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{symbol}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Intervalo: {interval}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Confiança</CardTitle>
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${results.total_pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    ${results.total_pnl.toFixed(2)}
-                  </div>
+                  <div className="text-2xl font-bold">{confidenceThreshold}%</div>
                   <p className="text-xs text-muted-foreground">
-                    De ${results.initial_balance.toFixed(2)}
+                    Mínima para trade
                   </p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Max Drawdown</CardTitle>
-                  <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Timestamp</CardTitle>
+                  <Activity className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-red-500">
-                    {results.max_drawdown.toFixed(2)}%
+                  <div className="text-xs font-mono text-muted-foreground">
+                    {new Date().toLocaleString("pt-BR")}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Maior perda acumulada
-                  </p>
                 </CardContent>
               </Card>
             </div>
 
             <Card>
               <CardHeader>
-                <CardTitle>Métricas Detalhadas</CardTitle>
+                <CardTitle>Informações do Backtest</CardTitle>
+                <CardDescription>
+                  Detalhes da simulação executada
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground">Profit Factor</div>
-                    <div className="text-2xl font-bold">
-                      {results.profit_factor === Infinity ? '∞' : results.profit_factor.toFixed(2)}
+                <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Símbolo</p>
+                      <p className="text-lg font-semibold">{symbol}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Intervalo</p>
+                      <p className="text-lg font-semibold">{interval}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Confiança Mínima</p>
+                      <p className="text-lg font-semibold">{confidenceThreshold}%</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Status</p>
+                      <p className={`text-lg font-semibold ${results.success ? 'text-green-500' : 'text-red-500'}`}>
+                        {results.success ? "Sucesso" : "Erro"}
+                      </p>
                     </div>
                   </div>
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground">Sharpe Ratio</div>
-                    <div className="text-2xl font-bold">{results.sharpe_ratio.toFixed(2)}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground">Lucro Médio</div>
-                    <div className="text-2xl font-bold text-green-500">
-                      ${results.avg_win.toFixed(2)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground">Perda Média</div>
-                    <div className="text-2xl font-bold text-red-500">
-                      ${results.avg_loss.toFixed(2)}
-                    </div>
+                  <div className="border-t pt-4">
+                    <p className="text-sm font-medium text-muted-foreground">Mensagem</p>
+                    <p className="text-sm mt-2">{results.message}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </>
+        )}
+
+        {runBacktest.isPending && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-center space-x-2">
+                <div className="animate-spin">⚙️</div>
+                <p className="text-muted-foreground">Backtesting em andamento...</p>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </DashboardLayout>

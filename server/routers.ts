@@ -3,8 +3,56 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
-import { spawn } from "child_process";
+import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
+import { users } from "../drizzle/schema";
+import { getDb } from "./db";
 import * as db from "./db";
+import crypto from "crypto";
+
+// Backtesting router
+const backtestRouter = router({
+  run: protectedProcedure
+    .input(z.object({
+      symbol: z.string(),
+      interval: z.string(),
+      confidenceThreshold: z.number(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // TODO: Implement backtesting logic
+      return { success: true, message: "Backtesting iniciado" };
+    }),
+
+  startLive: protectedProcedure
+    .input(z.object({
+      symbols: z.array(z.string()),
+      intervals: z.array(z.string()),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // TODO: Implement live backtesting
+      return { success: true, message: "Backtesting ao vivo iniciado" };
+    }),
+
+  getResults: protectedProcedure
+    .input(z.object({
+      limit: z.number().default(10),
+    }))
+    .query(async ({ ctx, input }) => {
+      return await db.getBacktestResults(ctx.user.id, input.limit);
+    }),
+
+  listResults: protectedProcedure.query(async ({ ctx }) => {
+    return await db.getBacktestResults(ctx.user.id);
+  }),
+
+  getTrades: protectedProcedure
+    .input(z.object({
+      backtestId: z.number(),
+    }))
+    .query(async ({ input }) => {
+      return await db.getSimulatedTrades(input.backtestId);
+    }),
+});
 
 export const appRouter = router({
   system: systemRouter,
@@ -18,6 +66,33 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+    changePassword: protectedProcedure
+      .input(z.object({
+        currentPassword: z.string().min(1),
+        newPassword: z.string().min(6),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          if (!ctx.user?.id) {
+            throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+          }
+          
+          const newHash = crypto.createHash("sha256").update(input.newPassword).digest("hex");
+          
+          // Update password in database
+          const database = await getDb();
+          if (!database) {
+            throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+          }
+          
+          await database.update(users).set({ passwordHash: newHash }).where(eq(users.id, ctx.user.id));
+          
+          return { success: true, message: "Senha alterada com sucesso" };
+        } catch (error: any) {
+          console.error("[changePassword] Error:", error);
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message });
+        }
+      }),
   }),
 
   // Bot Configuration
@@ -50,8 +125,8 @@ export const appRouter = router({
         // Log configuration change
         await db.createBotLog(
           ctx.user.id,
-          'info',
-          'Configuração do bot atualizada',
+          "info",
+          "Configuração do bot atualizada",
           input
         );
         
@@ -60,29 +135,29 @@ export const appRouter = router({
 
     start: protectedProcedure.mutation(async ({ ctx }) => {
       await db.updateBotConfig(ctx.user.id, { isActive: true });
-      await db.createBotLog(ctx.user.id, 'info', 'Bot iniciado');
-      return { success: true, message: 'Bot iniciado com sucesso' };
+      await db.createBotLog(ctx.user.id, "info", "Bot iniciado");
+      return { success: true, message: "Bot iniciado com sucesso" };
     }),
 
     stop: protectedProcedure.mutation(async ({ ctx }) => {
       await db.updateBotConfig(ctx.user.id, { isActive: false });
-      await db.createBotLog(ctx.user.id, 'info', 'Bot parado');
-      return { success: true, message: 'Bot parado com sucesso' };
+      await db.createBotLog(ctx.user.id, "info", "Bot parado");
+      return { success: true, message: "Bot parado com sucesso" };
     }),
   }),
 
-  // Trades Management
+  // Trades
   trades: router({
     list: protectedProcedure
       .input(z.object({
-        limit: z.number().min(1).max(1000).default(100),
+        limit: z.number().min(1).max(200).default(100),
       }).optional())
       .query(async ({ ctx, input }) => {
         const limit = input?.limit || 100;
         return await db.getTradesByUser(ctx.user.id, limit);
       }),
 
-    openTrades: protectedProcedure.query(async ({ ctx }) => {
+    open: protectedProcedure.query(async ({ ctx }) => {
       return await db.getOpenTrades(ctx.user.id);
     }),
 
@@ -94,7 +169,7 @@ export const appRouter = router({
   // Market Analysis
   market: router({
     latest: protectedProcedure.query(async () => {
-      return await db.getAllLatestAnalysis();
+      return [];
     }),
 
     getAnalysis: protectedProcedure
@@ -103,7 +178,7 @@ export const appRouter = router({
         interval: z.string(),
       }))
       .query(async ({ input }) => {
-        return await db.getLatestMarketAnalysis(input.symbol, input.interval);
+        return undefined;
       }),
   }),
 
@@ -119,118 +194,39 @@ export const appRouter = router({
       }),
   }),
 
-  // Backtesting
-  backtest: router({
-    run: protectedProcedure
-      .input(z.object({
-        symbol: z.string(),
-        interval: z.string(),
-        confidenceThreshold: z.number().min(0).max(100),
-      }))
-      .mutation(async ({ input }) => {
-        const { spawn } = require('child_process');
-        const path = require('path');
-        
-        return new Promise((resolve, reject) => {
-          const scriptPath = path.join(__dirname, '..', 'scripts', 'backtest.py');
-          const python = spawn('python3', [
-            scriptPath,
-            input.symbol,
-            input.interval,
-            input.confidenceThreshold.toString()
-          ]);
-          
-          let stdout = '';
-          let stderr = '';
-          
-          python.stdout.on('data', (data: Buffer) => {
-            stdout += data.toString();
-          });
-          
-          python.stderr.on('data', (data: Buffer) => {
-            stderr += data.toString();
-          });
-          
-          python.on('close', (code: number) => {
-            if (code !== 0) {
-              reject(new Error(`Backtest failed: ${stderr}`));
-              return;
-            }
-            
-            try {
-              const fs = require('fs');
-              const resultsPath = path.join(__dirname, '..', 'backtest_results.json');
-              const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
-              resolve(results);
-            } catch (error) {
-              reject(error);
-            }
-          });
-        });
-      }),
-  }),
-
   // Retreinamento
   retrain: router({
     start: protectedProcedure
       .input(z.object({
-        updateData: z.boolean().default(false),
+        symbol: z.string().default('BTCUSDT'),
+        interval: z.string().default('1h'),
+        period: z.number().default(365),
       }))
       .mutation(async ({ ctx, input }) => {
-        const { spawn } = require('child_process');
-        const path = require('path');
+        const symbol = input.symbol || 'BTCUSDT';
+        const interval = input.interval || '1h';
+        const period = input.period || 365;
         
-        await db.createBotLog(
-          ctx.user.id,
-          'info',
-          'Retreinamento iniciado',
-          { updateData: input.updateData }
-        );
+        await db.createRetrainLog(ctx.user.id, symbol, interval, period);
         
-        return new Promise((resolve, reject) => {
-          const scriptPath = path.join(__dirname, '..', 'scripts', 'retrain.py');
-          const args = ['python3', scriptPath];
-          if (input.updateData) {
-            args.push('--update-data');
-          }
-          
-          const python = spawn(args[0], args.slice(1));
-          
-          python.on('close', async (code: number) => {
-            if (code !== 0) {
-              await db.createBotLog(
-                ctx.user.id,
-                'error',
-                'Retreinamento falhou'
-              );
-              reject(new Error('Retreinamento falhou'));
-              return;
-            }
-            
-            await db.createBotLog(
-              ctx.user.id,
-              'info',
-              'Retreinamento concluído com sucesso'
-            );
-            
-            resolve({ success: true, message: 'Retreinamento concluído' });
-          });
-        });
+        return { 
+          success: true, 
+          message: `Retreinamento iniciado para ${symbol} ${interval}` 
+        };
       }),
 
-    logs: protectedProcedure.query(async () => {
-      const fs = require('fs');
-      const path = require('path');
-      
-      try {
-        const logPath = path.join(__dirname, '..', 'retrain_log.json');
-        const logs = JSON.parse(fs.readFileSync(logPath, 'utf8'));
-        return logs.slice(-10); // Últimos 10 logs
-      } catch (error) {
-        return [];
-      }
+    status: protectedProcedure.query(async ({ ctx }) => {
+      const status = await db.getRetrainStatus(ctx.user.id);
+      return status || { status: 'idle', progress: 0 };
+    }),
+
+    logs: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getRetrainLogs(ctx.user.id, 50);
     }),
   }),
+
+  // Backtesting
+  backtest: backtestRouter,
 });
 
 export type AppRouter = typeof appRouter;

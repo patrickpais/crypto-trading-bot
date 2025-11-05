@@ -108,3 +108,58 @@
 - [ ] Implementar limite de perda diária
 - [ ] Adicionar modo de simulação (paper trading)
 - [ ] Criar sistema de alertas por email/notificação
+
+
+## Novas Funcionalidades - Gráficos e Perfil
+
+### Gráfico de Desempenho
+- [x] Criar componente de gráfico de equity curve
+- [x] Adicionar visualização de lucros/perdas ao longo do tempo
+- [x] Mostrar estatísticas de performance acumulada
+- [x] Implementar filtros de período (7d, 30d, 90d, 1y, tudo)
+- [x] Adicionar gráfico de distribuição de trades (wins vs losses)
+
+### Perfil de Usuário
+- [x] Criar página de perfil com informações do usuário
+- [x] Mostrar estatísticas pessoais de trading
+- [x] Adicionar configurações de conta
+- [x] Implementar edição de preferências
+- [x] Adicionar histórico de atividades
+
+
+## Fase 2 - Backtesting 7 Dias com Dados Reais
+
+### Corrigir Dashboard
+- [ ] Adicionar dados de exemplo ao dashboard
+- [ ] Implementar carregamento de estatísticas reais
+- [ ] Mostrar gráfico de análise de mercado em tempo real
+- [ ] Exibir status do backtesting
+
+### Backtesting Automático 7 Dias
+- [ ] Criar job que roda backtesting continuamente
+- [ ] Baixar dados reais do Bybit a cada 5 minutos
+- [ ] Simular trades com modelo treinado
+- [ ] Registrar cada trade no banco de dados
+- [ ] Atualizar dashboard em tempo real
+- [ ] Calcular métricas (ROI, Win Rate, Lucro Total)
+- [ ] Armazenar resultados para análise
+
+### Integração com Bybit (Dados Reais)
+- [ ] Implementar função para buscar velas em tempo real
+- [ ] Coletar dados de 5m, 15m, 30m e 1h
+- [ ] Calcular indicadores em tempo real (RSI, MACD, BB, EMA)
+- [ ] Gerar sinais de trading automáticos
+- [ ] Validar sinais com modelo de IA
+
+### Domínio Personalizado
+- [ ] Configurar domínio no Railway
+- [ ] Apontar DNS para Railway
+- [ ] Testar acesso via domínio personalizado
+- [ ] Configurar SSL/HTTPS
+
+### Execução 24/7
+- [ ] Configurar servidor para rodar continuamente
+- [ ] Implementar sistema de monitoramento
+- [ ] Criar alertas de erro/falha
+- [ ] Configurar logs persistentes
+- [ ] Testar por 7 dias ininterruptos

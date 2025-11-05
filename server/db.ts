@@ -1,6 +1,6 @@
 import { eq, desc, and, gte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, botConfig, trades, marketAnalysis, botLogs, BotConfig, Trade, MarketAnalysis } from "../drizzle/schema";
+import { InsertUser, users, botConfig, trades, botLogs, historicalData, backtestResults, simulatedTrades, aiModels, retrainLogs, BotConfig, Trade, BotLog, HistoricalData, BacktestResult, SimulatedTrade, AIModel, RetrainLog } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -160,7 +160,7 @@ export async function closeTrade(tradeId: number, exitPrice: string, profit: str
     status: 'closed',
     exitPrice,
     profit,
-    profitPercentage,
+    profitPercent: profitPercentage,
     exitTime: new Date(),
   }).where(eq(trades.id, tradeId));
 }
@@ -184,43 +184,92 @@ export async function getTodayTradesCount(userId: number): Promise<number> {
 
 // ========== Market Analysis Functions ==========
 
-export async function saveMarketAnalysis(analysis: Omit<MarketAnalysis, 'id' | 'analyzedAt'>) {
+// ========== Historical Data Functions ==========
+
+export async function saveHistoricalData(data: Omit<HistoricalData, 'id' | 'createdAt'>[]) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  await db.insert(marketAnalysis).values(analysis as any);
+  await db.insert(historicalData).values(data as any);
 }
 
-export async function getLatestMarketAnalysis(symbol: string, interval: string): Promise<MarketAnalysis | undefined> {
+export async function getHistoricalData(symbol: string, interval: string, limit: number = 1000) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(historicalData)
+    .where(and(
+      eq(historicalData.symbol, symbol),
+      eq(historicalData.interval, interval)
+    ))
+    .orderBy(desc(historicalData.timestamp))
+    .limit(limit);
+}
+
+// ========== Backtest Results Functions ==========
+
+export async function saveBacktestResult(result: Omit<BacktestResult, 'id' | 'createdAt'>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db.insert(backtestResults).values(result as any);
+}
+
+export async function getBacktestResults(userId: number, limit: number = 10) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(backtestResults)
+    .where(eq(backtestResults.userId, userId))
+    .orderBy(desc(backtestResults.createdAt))
+    .limit(limit);
+}
+
+// ========== Simulated Trades Functions ==========
+
+export async function saveSimulatedTrade(trade: Omit<SimulatedTrade, 'id' | 'createdAt'>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db.insert(simulatedTrades).values(trade as any);
+}
+
+export async function getSimulatedTrades(backtestId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(simulatedTrades)
+    .where(eq(simulatedTrades.backtestId, backtestId))
+    .orderBy(desc(simulatedTrades.createdAt));
+}
+
+// ========== AI Model Functions ==========
+
+export async function saveAIModel(model: Omit<AIModel, 'id' | 'createdAt' | 'updatedAt'>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db.insert(aiModels).values(model as any);
+}
+
+export async function getAIModel(userId: number, symbol: string) {
   const db = await getDb();
   if (!db) return undefined;
 
-  const result = await db.select().from(marketAnalysis)
+  const result = await db.select().from(aiModels)
     .where(and(
-      eq(marketAnalysis.symbol, symbol),
-      eq(marketAnalysis.interval, interval)
+      eq(aiModels.userId, userId),
+      eq(aiModels.symbol, symbol)
     ))
-    .orderBy(desc(marketAnalysis.analyzedAt))
+    .orderBy(desc(aiModels.createdAt))
     .limit(1);
 
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getAllLatestAnalysis(): Promise<MarketAnalysis[]> {
-  const db = await getDb();
-  if (!db) return [];
-
-  // Get latest analysis for each symbol/interval combination
-  const result = await db.select().from(marketAnalysis)
-    .orderBy(desc(marketAnalysis.analyzedAt))
-    .limit(10);
-
-  return result;
-}
-
 // ========== Bot Logs Functions ==========
 
-export async function createBotLog(userId: number, level: 'info' | 'warning' | 'error', message: string, details?: any) {
+export async function createBotLog(userId: number, level: 'info' | 'warning' | 'error', message: string, metadata?: any) {
   const db = await getDb();
   if (!db) return;
 
@@ -228,7 +277,7 @@ export async function createBotLog(userId: number, level: 'info' | 'warning' | '
     userId,
     level,
     message,
-    details: details ? JSON.stringify(details) : null,
+    metadata: metadata || null,
   });
 }
 
@@ -268,4 +317,82 @@ export async function getTradeStatistics(userId: number) {
     totalProfit: totalProfit.toFixed(2),
     openTrades: allTrades.filter(t => t.status === 'open').length,
   };
+}
+
+export async function getUserById(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get user: database not available");
+    return undefined;
+  }
+
+  const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateUserPassword(userId: number, passwordHash: string) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot update user password: database not available");
+    return;
+  }
+
+  try {
+    await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+  } catch (error) {
+    console.error("[Database] Failed to update user password:", error);
+    throw error;
+  }
+}
+
+// ========== Retrain Functions ==========
+
+export async function createRetrainLog(userId: number, symbol: string, interval: string, period: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const result = await db.insert(retrainLogs).values({
+    userId,
+    symbol,
+    interval,
+    period,
+    status: 'running',
+  });
+
+  return result;
+}
+
+export async function updateRetrainLog(id: number, status: 'pending' | 'running' | 'completed' | 'failed', accuracy?: number, dataPoints?: number, message?: string) {
+  const db = await getDb();
+  if (!db) return null;
+
+  await db.update(retrainLogs).set({
+    status,
+    accuracy: accuracy ? accuracy.toString() : undefined,
+    dataPoints,
+    message,
+    completedAt: status === 'completed' || status === 'failed' ? new Date() : undefined,
+  }).where(eq(retrainLogs.id, id));
+}
+
+export async function getRetrainLogs(userId: number, limit: number = 50) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(retrainLogs)
+    .where(eq(retrainLogs.userId, userId))
+    .orderBy(desc(retrainLogs.createdAt))
+    .limit(limit);
+}
+
+export async function getRetrainStatus(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const lastLog = await db.select().from(retrainLogs)
+    .where(eq(retrainLogs.userId, userId))
+    .orderBy(desc(retrainLogs.createdAt))
+    .limit(1);
+
+  return lastLog.length > 0 ? lastLog[0] : null;
 }

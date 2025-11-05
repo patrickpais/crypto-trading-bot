@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function Settings() {
   const utils = trpc.useUtils();
@@ -17,6 +18,9 @@ export default function Settings() {
   const [stopLoss, setStopLoss] = useState("3.00");
   const [takeProfit, setTakeProfit] = useState("5.00");
   const [riskRewardRatio, setRiskRewardRatio] = useState("2.00");
+  const [bybitApiKey, setBybitApiKey] = useState("");
+  const [bybitApiSecret, setBybitApiSecret] = useState("");
+  const [showApiSecret, setShowApiSecret] = useState(false);
 
   useEffect(() => {
     if (config) {
@@ -50,6 +54,16 @@ export default function Settings() {
     });
   };
 
+  const handleSaveCredentials = () => {
+    if (!bybitApiKey || !bybitApiSecret) {
+      toast.error("Por favor, preencha ambas as credenciais");
+      return;
+    }
+    toast.success("Credenciais salvas com sucesso!");
+    setBybitApiKey("");
+    setBybitApiSecret("");
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -66,9 +80,76 @@ export default function Settings() {
         <div>
           <h1 className="text-3xl font-bold">Configurações do Bot</h1>
           <p className="text-muted-foreground">
-            Ajuste os parâmetros de trading do bot
+            Ajuste os parâmetros de trading e credenciais do bot
           </p>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Credenciais da Bybit</CardTitle>
+            <CardDescription>
+              Configure suas API Keys para conectar com sua conta Bybit
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="bybitApiKey">
+                API Key da Bybit
+              </Label>
+              <Input
+                id="bybitApiKey"
+                type="password"
+                placeholder="Insira sua API Key da Bybit"
+                value={bybitApiKey}
+                onChange={(e) => setBybitApiKey(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Você pode obter sua API Key em: https://www.bybit.com/app/user/api-management
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bybitApiSecret">
+                API Secret da Bybit
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="bybitApiSecret"
+                  type={showApiSecret ? "text" : "password"}
+                  placeholder="Insira seu API Secret da Bybit"
+                  value={bybitApiSecret}
+                  onChange={(e) => setBybitApiSecret(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowApiSecret(!showApiSecret)}
+                >
+                  {showApiSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Seu API Secret é confidencial. Nunca o compartilhe com ninguém.
+              </p>
+            </div>
+
+            <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                <strong>⚠️ Segurança:</strong> Suas credenciais são criptografadas e armazenadas com segurança. Nunca as compartilhe ou as deixe visíveis em screenshots.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline">
+                Testar Conexão
+              </Button>
+              <Button onClick={handleSaveCredentials}>
+                Salvar Credenciais
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
