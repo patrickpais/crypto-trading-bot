@@ -357,10 +357,7 @@ export async function createRetrainLog(userId: number, symbol: string, interval:
     interval,
     period,
     status: 'running',
-    accuracy: null,
     dataPoints: 0,
-    message: null,
-    metadata: null,
   });
 
   return result;
