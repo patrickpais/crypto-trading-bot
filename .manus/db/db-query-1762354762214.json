@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `retrain_logs` (\n  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  `userId` int NOT NULL,\n  `symbol` varchar(20) NOT NULL,\n  `interval` varchar(10) NOT NULL,\n  `period` int NOT NULL DEFAULT 365,\n  `status` enum('pending','running','completed','failed') NOT NULL DEFAULT 'pending',\n  `accuracy` decimal(5,4),\n  `dataPoints` int DEFAULT 0,\n  `message` text,\n  `metadata` json,\n  `startedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `completedAt` timestamp,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user i4eWuXmqdJD31yc.root --database Cp5JEc3tFKKzfsKUJ75GgH --execute CREATE TABLE IF NOT EXISTS `retrain_logs` (\n  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  `userId` int NOT NULL,\n  `symbol` varchar(20) NOT NULL,\n  `interval` varchar(10) NOT NULL,\n  `period` int NOT NULL DEFAULT 365,\n  `status` enum('pending','running','completed','failed') NOT NULL DEFAULT 'pending',\n  `accuracy` decimal(5,4),\n  `dataPoints` int DEFAULT 0,\n  `message` text,\n  `metadata` json,\n  `startedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `completedAt` timestamp,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1434
+}
